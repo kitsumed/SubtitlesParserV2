@@ -45,8 +45,8 @@ namespace SubtitlesParserV2.Formats.Parsers
 			using StreamReader reader = new StreamReader(srtStream, encoding, true, 1024, true);
 
 			List<SubtitleModel> items = new List<SubtitleModel>();
-			IEnumerable<string> srtSubParts = GetSrtSubTitleParts(reader); // This is a lazy list, not yet into memory
-			if (srtSubParts.Any()) // Ensure at least 1 part was found
+			IEnumerable<string> srtSubParts = GetSrtSubTitleParts(reader).Peekable(out var srtSubPartsAny); // This is a lazy list, not yet into memory
+			if (srtSubPartsAny) // Ensure at least 1 part was found
 			{
 				bool isFirstPart = true;
 				foreach (string part in srtSubParts)

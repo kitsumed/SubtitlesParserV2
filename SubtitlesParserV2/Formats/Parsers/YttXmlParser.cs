@@ -36,8 +36,8 @@ namespace SubtitlesParserV2.Formats.Parsers
 			XElement xElement = XElement.Load(xmlStream);
 
 			// Try to get lyrics in SRV3 format (P element)
-			IEnumerable<XElement> nodeList = xElement.Descendants("p");
-			if (!nodeList.Any()) 
+			IEnumerable<XElement> nodeList = xElement.Descendants("p").Peekable(out var nodeListAny);
+			if (!nodeListAny)
 			{
 				// Fallback to SRV2 & SRV1 format (Text element)
 				nodeList = xElement.Descendants("text");
