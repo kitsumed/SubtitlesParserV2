@@ -54,7 +54,7 @@ namespace SubtitlesParserV2.Formats.Parsers
 					string durString = node.Attribute("d")?.Value ?? string.Empty;
 					_ = float.TryParse(startString, default, CultureInfo.InvariantCulture, out start);
 					_ = float.TryParse(durString, default, CultureInfo.InvariantCulture, out duration);
-					// Fallback to SRV1 format (In segonds)
+					// Fallback to SRV1 format (In seconds)
 					if (string.IsNullOrEmpty(startString) && string.IsNullOrEmpty(durString)) 
 					{
 						startString = node.Attribute("start")?.Value ?? string.Empty;

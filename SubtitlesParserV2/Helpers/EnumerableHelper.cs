@@ -7,7 +7,7 @@ namespace SubtitlesParserV2.Helpers
 		/// <summary>
 		/// Method to verify if your IEnumerable has at least 1 element while not iterating over it.
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
+		/// <typeparam name="T">The type of the IEnumerable collection</typeparam>
 		/// <param name="source"></param>
 		/// <param name="hasElements">Do the IEnumerable have at least 1 element?</param>
 		/// <returns>IEnumerable</returns>
