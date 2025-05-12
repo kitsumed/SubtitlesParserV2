@@ -3,10 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Xml;
-using System.Xml.Linq;
-using Microsoft.Extensions.Logging;
 using SubtitlesParserV2.Helpers;
-using SubtitlesParserV2.Logger;
 using SubtitlesParserV2.Models;
 
 
@@ -22,10 +19,6 @@ namespace SubtitlesParserV2.Formats.Parsers
 	/// -->
 	internal class TtmlParser : ISubtitlesParser
     {
-		private static readonly Type CurrentType = typeof(TtmlParser);
-		// Alternative for static class, create a logger with the full namespace name
-		private static readonly ILogger _logger = LoggerManager.GetLogger(CurrentType.FullName ?? CurrentType.Name);
-
 		public List<SubtitleModel> ParseStream(Stream xmlStream, Encoding encoding)
         {
 			StreamHelper.ThrowIfStreamIsNotSeekableOrReadable(xmlStream);
@@ -33,45 +26,54 @@ namespace SubtitlesParserV2.Formats.Parsers
 			xmlStream.Position = 0;
 			List<SubtitleModel> items = new List<SubtitleModel>();
 
-            // parse xml stream
-            XElement xElement = XElement.Load(xmlStream);
-            XNamespace tt = xElement.GetNamespaceOfPrefix("tt") ?? xElement.GetDefaultNamespace();
-			XNamespace? ttp = xElement.GetNamespaceOfPrefix("ttp");
+			// Read the xml stream line by line
+			using XmlReader reader = XmlReader.Create(xmlStream, new XmlReaderSettings { IgnoreWhitespace = true, IgnoreComments = true });
+
 			// Value for parsing timecode for ttml file using ticks only, null by default (disabled)
 			long? definedTickRate = null;
 
-            // Verify for optional file specific values like tickRate
-			if (ttp != null) 
-            {
-                // tickRate
-                if (long.TryParse(xElement.Attribute(ttp + "tickRate")?.Value, out long parsed_definedTickRate))
-                    definedTickRate = parsed_definedTickRate;
-			}
-            
-			IEnumerable<XElement> nodeList = xElement.Descendants(tt + "p");
-            foreach (XElement node in nodeList)
-            {
-                try
-                {
-                    string beginString = node.Attribute("begin")?.Value ?? string.Empty;
-                    int startTicks = ParseTimecode(beginString, definedTickRate);
-                    string endString = node.Attribute("end")?.Value ?? string.Empty;
-                    int endTicks = ParseTimecode(endString, definedTickRate);
+			while (reader.Read()) 
+			{
+				if (reader.NodeType == XmlNodeType.Element) 
+				{
+					// Parse the <tt> element attributes to find the tickRate
+					if (reader.Name == "tt" && reader.HasAttributes)
+					{
+						// Loop through the attributes of the <tt> element
+						while (reader.MoveToNextAttribute())
+						{
+							if (reader.LocalName == "tickRate" && long.TryParse(reader.Value, out long parsedTickRate))
+							{
+								definedTickRate = parsedTickRate;
+							}
+						}
+						reader.MoveToElement(); // Set our reader back to the <tt> element
+					}
 
-                    string text = node.Value.Trim();
+					// Parse the <p> element (subtitle)
+					if (reader.LocalName == "p")
+					{
+						// Parse time
+						string beginString = reader.GetAttribute("begin") ?? string.Empty;
+						int startMs = ParseTimecode(beginString, definedTickRate);
 
-                    items.Add(new SubtitleModel()
-                    {
-                        StartTime = startTicks,
-                        EndTime = endTicks,
-                        Lines = new List<string> { text }
-                    });
-                }
-                catch (Exception ex)
-                {
-					_logger.LogDebug(ex, "Exception raised when parsing xml node {node}: {ex}", node, ex.Message);
+						string endString = reader.GetAttribute("end") ?? string.Empty;
+						int endMs = ParseTimecode(endString, definedTickRate);
+
+						// Parse subtitle text
+						string text = ParserHelper.XmlReadCurrentElementInnerText(reader);
+						if (text != null)
+						{
+							items.Add(new SubtitleModel()
+							{
+								StartTime = startMs,
+								EndTime = endMs,
+								Lines = new List<string> { text }
+							});
+						}
+					}
 				}
-            }
+			}
 
             if (items.Count >= 1)
             {
