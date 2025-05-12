@@ -55,12 +55,12 @@ namespace SubtitlesParserV2.Formats.Parsers
 						}
 					}
 
-					// We need to read the next node to get the text value.
-					if (reader.Read() && reader.NodeType == XmlNodeType.Text) 
+					string text = ParserHelper.XmlReadCurrentElementInnerText(reader);
+					if (text != null) 
 					{
 						// Get the text and html decode it as some versions (SRV1 & SRV2) uses html encoding
-						// for certains characters ( ' > &#39;t). Before and after text spaces are also removed.
-						string text = WebUtility.HtmlDecode(reader.Value.Trim());
+						// for certains characters ( ' > &#39;t).
+						text = WebUtility.HtmlDecode(text);
 
 						items.Add(new SubtitleModel()
 						{
