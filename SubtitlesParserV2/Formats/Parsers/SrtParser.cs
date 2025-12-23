@@ -33,9 +33,12 @@ namespace SubtitlesParserV2.Formats.Parsers
 		private static readonly string[] _delimiters = { "-->", "- >", "->" };
 		private static readonly string[] _newLineCharacters = { "\r\n", "\r", "\n" };
 
-		// Methods -------------------------------------------------------------------------
+        private static readonly Regex FormattingRegex = new Regex(@"\{.*?\}|<.*?>", RegexOptions.Compiled);
+        private static readonly Regex TimecodeRegex = new Regex("[0-9]+:[0-9]+:[0-9]+([,\\.][0-9]+)?", RegexOptions.Compiled);
 
-		public List<SubtitleModel> ParseStream(Stream srtStream, Encoding encoding)
+        // Methods -------------------------------------------------------------------------
+
+        public List<SubtitleModel> ParseStream(Stream srtStream, Encoding encoding)
 		{
 			StreamHelper.ThrowIfStreamIsNotSeekableOrReadable(srtStream);
 			// seek the beginning of the stream
@@ -78,7 +81,7 @@ namespace SubtitlesParserV2.Formats.Parsers
 						else // We already found the subtitle time
 						{
 							// Strip formatting by removing anything within curly braces or angle brackets, which is how SRT styles text according to wikipedia (https://en.wikipedia.org/wiki/SubRip#Formatting)
-							item.Lines.Add(Regex.Replace(line, @"\{.*?\}|<.*?>", string.Empty).Trim());
+							item.Lines.Add(FormattingRegex.Replace(line, string.Empty).Trim());
 						}
 					}
 
@@ -181,7 +184,7 @@ namespace SubtitlesParserV2.Formats.Parsers
 		/// <returns>The parsed timecode in milliseconds. If the parsing was unsuccessful, -1 is returned</returns>
 		private static int ParseSrtTimecode(string timecode)
 		{
-			Match match = Regex.Match(timecode, "[0-9]+:[0-9]+:[0-9]+([,\\.][0-9]+)?");
+			Match match = TimecodeRegex.Match(timecode);
 			if (match.Success)
 			{
 				timecode = match.Value;

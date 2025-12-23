@@ -57,11 +57,11 @@ namespace SubtitlesParserV2.Formats.Parsers
 
 		private const float defaultFrameRate = 25;
 		private static readonly char[] _lineSeparators = { '|' };
-		private static readonly string LineRegex = @"^[{\[](-?\d+)[}\]][{\[](-?\d+)[}\]](.*)";
+        private static readonly Regex LineRegex = new Regex(@"^[{\[](-?\d+)[}\]][{\[](-?\d+)[}\]](.*)", RegexOptions.Compiled);
 
-		// Methods -------------------------------------------------------------------------
+        // Methods -------------------------------------------------------------------------
 
-		public List<SubtitleModel> ParseStream(Stream subStream, Encoding encoding)
+        public List<SubtitleModel> ParseStream(Stream subStream, Encoding encoding)
 		{
 			return ParseStream(subStream, encoding, new MicroDvdParserConfig());
 		}
@@ -137,7 +137,7 @@ namespace SubtitlesParserV2.Formats.Parsers
 
 		private static bool IsMicroDvdLine(string line)
 		{
-			return Regex.IsMatch(line, LineRegex);
+			return LineRegex.IsMatch(line);
 		}
 
 		/// <summary>
@@ -152,7 +152,7 @@ namespace SubtitlesParserV2.Formats.Parsers
 		/// <returns>The corresponding SubtitleItem</returns>
 		private static SubtitleModel ParseLine(string line, float frameRate)
 		{
-			Match match = Regex.Match(line, LineRegex);
+			Match match = LineRegex.Match(line);
 			if (match.Success && match.Groups.Count > 2)
 			{
 				string startFrame = match.Groups[1].Value;

@@ -45,9 +45,14 @@ namespace SubtitlesParserV2.Formats.Parsers
 	internal class SsaParser : ISubtitlesParser
 	{
 
-		// Methods ------------------------------------------------------------------
+        // Properties -----------------------------------------------------------------------
+		
+        private static readonly Regex NewLineRegex = new Regex(@"(?:\\n)|(?:\\N)", RegexOptions.Compiled);
+        private static readonly Regex FormattingRegex = new Regex(@"\{.*?\}", RegexOptions.Compiled);
 
-		public List<SubtitleModel> ParseStream(Stream ssaStream, Encoding encoding)
+        // Methods ------------------------------------------------------------------
+
+        public List<SubtitleModel> ParseStream(Stream ssaStream, Encoding encoding)
 		{
 			StreamHelper.ThrowIfStreamIsNotSeekableOrReadable(ssaStream);
 			// seek the beginning of the stream
@@ -123,7 +128,7 @@ namespace SubtitlesParserV2.Formats.Parsers
 
 										// according to the spec doc: 
 										// no word wrapping: `\n` `\N` both breaks
-										lines = Regex.Split(textLine, @"(?:\\n)|(?:\\N)").ToList();
+										lines = NewLineRegex.Split(textLine).ToList();
 										break;
 									default:
 										throw new ArgumentOutOfRangeException();
@@ -139,7 +144,7 @@ namespace SubtitlesParserV2.Formats.Parsers
 									EndTime = end,
 									// strip formatting by removing anything within curly braces, this will not remove duplicate content however,
 									// which can happen when working with signs for example
-									Lines = lines.Select(subtitleLine => Regex.Replace(subtitleLine, @"\{.*?\}", string.Empty)).ToList()
+									Lines = lines.Select(subtitleLine => FormattingRegex.Replace(subtitleLine, string.Empty)).ToList()
 								};
 								items.Add(item);
 							}
