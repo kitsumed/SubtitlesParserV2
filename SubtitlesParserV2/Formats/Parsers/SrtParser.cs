@@ -42,7 +42,7 @@ namespace SubtitlesParserV2.Formats.Parsers
 			srtStream.Position = 0;
 
 			// Create a StreamReader & configure it to leave the main stream open when disposing
-			using StreamReader reader = new StreamReader(srtStream, encoding, true, 1024, true);
+			using StreamReader reader = new StreamReader(srtStream, encoding, true, 4096, true);
 
 			List<SubtitleModel> items = new List<SubtitleModel>();
 			IEnumerable<string> srtSubParts = GetSrtSubTitleParts(reader).Peekable(out var srtSubPartsAny); // This is a lazy list, not yet into memory

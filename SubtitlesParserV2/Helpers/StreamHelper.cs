@@ -15,8 +15,8 @@ namespace SubtitlesParserV2.Helpers
         {
             MemoryStream outputStream = new MemoryStream();
             int count;
-            // Create a buffer to read by chunks
-            byte[] buffer = new byte[1024];
+            // Create a buffer to read by chunks (4KB is the default, I saw online Microsoft may be using 80KB for copying but I'm unsure)
+            byte[] buffer = new byte[4096];
             do
             {
                 // Read a chunk from the stream

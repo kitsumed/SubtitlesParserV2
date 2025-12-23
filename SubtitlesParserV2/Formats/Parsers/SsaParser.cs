@@ -54,7 +54,7 @@ namespace SubtitlesParserV2.Formats.Parsers
 			ssaStream.Position = 0;
 
 			// Create a StreamReader & configure it to leave the main stream open when disposing
-			using StreamReader reader = new StreamReader(ssaStream, encoding, true, 1024, true);
+			using StreamReader reader = new StreamReader(ssaStream, encoding, true, 4096, true);
 
 			// default wrap style to none if the header section doesn't contain a wrap style definition
 			// (very possible since it wasn't present in SSA, only ASS) 

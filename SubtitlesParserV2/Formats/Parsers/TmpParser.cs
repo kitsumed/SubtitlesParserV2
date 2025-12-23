@@ -30,7 +30,7 @@ namespace SubtitlesParserV2.Formats.Parsers
 			tmpStream.Position = 0;
 
 			// Create a StreamReader & configure it to leave the main stream open when disposing
-			using StreamReader reader = new StreamReader(tmpStream, encoding, true, 1024, true);
+			using StreamReader reader = new StreamReader(tmpStream, encoding, true, 4096, true);
 
 			List<SubtitleModel> items = new List<SubtitleModel>();
 

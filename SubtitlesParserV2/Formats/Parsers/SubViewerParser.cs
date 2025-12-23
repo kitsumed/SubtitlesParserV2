@@ -48,7 +48,7 @@ namespace SubtitlesParserV2.Formats.Parsers
 			// seek the beginning of the stream
 			subStream.Position = 0;
 			// Create a StreamReader & configure it to leave the main stream open when disposing
-			using StreamReader reader = new StreamReader(subStream, encoding, true, 1024, true);
+			using StreamReader reader = new StreamReader(subStream, encoding, true, 4096, true);
 
 			// Ensure the first line match a .sbv file format for SubViewer1 (optional info header / subtitle header)
 			// or SubViewer2 (timestamp)

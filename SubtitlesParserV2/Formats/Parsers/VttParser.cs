@@ -48,7 +48,7 @@ namespace SubtitlesParserV2.Formats.Parsers
 			vttStream.Position = 0;
 
 			// Create a StreamReader & configure it to leave the main stream open when disposing
-			using StreamReader reader = new StreamReader(vttStream, encoding, detectEncodingFromByteOrderMarks: true, 1024, true);
+			using StreamReader reader = new StreamReader(vttStream, encoding, detectEncodingFromByteOrderMarks: true, 4096, true);
 
 			List<SubtitleModel> items = new List<SubtitleModel>();
 			IEnumerator<string> vttSubParts = GetVttSubTitleParts(reader).GetEnumerator();
