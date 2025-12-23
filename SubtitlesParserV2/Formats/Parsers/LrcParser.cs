@@ -22,12 +22,16 @@ namespace SubtitlesParserV2.Formats.Parsers
 
 	internal class LrcParser : ISubtitlesParser, ISubtitlesParser<LrcParserConfig>
 	{
-		// Format : [0000:00.00] / [mm:ss.xx]
-		private static readonly Regex ShortTimestampRegex = new Regex(@"\[(?<M>\d+):(?<S>\d{2})\.(?<X>\d{2})\]", RegexOptions.Compiled);
-		// Format : [0000:00:00.00] / [hh:mm:ss.xx] (Not part of the official docs, but some applications decided to do it that way)
-		private static readonly Regex LongTimestampRegex = new Regex(@"\[(?<H>\d+):(?<M>\d+):(?<S>\d{2})\.(?<X>\d{2})\]", RegexOptions.Compiled);
-		// Format <00:00.00> used inside the lines by the Enhanced LRC format (A2 Extension)
-		private static readonly Regex EnhancedLrcFormatRegex = new Regex(@"<\d{2}:\d{2}\.\d{2}>", RegexOptions.Compiled);
+		// Format : [0000:00.00] / [mm:ss.cc] where cc is centiseconds (hundredths of a second)
+		private static readonly Regex ShortTimestampCentisecondsRegex = new Regex(@"\[(?<M>\d+):(?<S>\d{2})\.(?<C>\d{2})\]", RegexOptions.Compiled);
+        // Format : [0000:00.000] / [mm:ss.mmm] where mmm is milliseconds (Not part of the official docs, but some applications decided to do it that way)
+        private static readonly Regex ShortTimestampMillisecondsRegex = new Regex(@"\[(?<M>\d+):(?<S>\d{2})\.(?<MS>\d{3})\]", RegexOptions.Compiled);
+		// Format : [0000:00:00.00] / [hh:mm:ss.cc] where cc is centiseconds
+		private static readonly Regex LongTimestampCentisecondsRegex = new Regex(@"\[(?<H>\d+):(?<M>\d+):(?<S>\d{2})\.(?<C>\d{2})\]", RegexOptions.Compiled);
+        // Format : [0000:00:00.000] / [hh:mm:ss.mmm] where mmm is milliseconds (Not part of the official docs, but some applications decided to do it that way)
+        private static readonly Regex LongTimestampMillisecondsRegex = new Regex(@"\[(?<H>\d+):(?<M>\d+):(?<S>\d{2})\.(?<MS>\d{3})\]", RegexOptions.Compiled);
+		// Format <00:00.00> or <00:00.000> used inside the lines by the Enhanced LRC format (A2 Extension)
+		private static readonly Regex EnhancedLrcFormatRegex = new Regex(@"<\d{2}:\d{2}\.\d{2,3}>", RegexOptions.Compiled);
 
 
 		public List<SubtitleModel> ParseStream(Stream lrcStream, Encoding encoding)
@@ -54,12 +58,12 @@ namespace SubtitlesParserV2.Formats.Parsers
 		/// [length: 0:40]
 		/// # This is a comment, line 6 uses Enhanced LRC format
 		/// 
-		/// [00:12.00] Line 1 lyrics
-		/// [00:17.20] Line 2 lyrics
-		/// [00:21.10] Line 3 lyrics
-		/// [00:24.00] Line 4 lyrics
-		/// [00:28.25] Line 5 lyrics
-		/// [00:29.02] Line 6 <00:34.20>lyrics
+		/// [00:12.00] Line 1 lyrics (centiseconds)
+		/// [00:17.20] Line 2 lyrics (centiseconds)
+		/// [00:21.100] Line 3 lyrics (milliseconds)
+		/// [00:24.000] Line 4 lyrics (milliseconds)
+		/// [00:28.25] Line 5 lyrics (centiseconds)
+		/// [00:29.02] Line 6 <00:34.20>lyrics (Enhanced LRC format)
 		/// [00:39.00] last lyrics.
 		/// -->
 		public List<SubtitleModel> ParseStream(Stream lrcStream, Encoding encoding, LrcParserConfig configuration)
@@ -68,7 +72,7 @@ namespace SubtitlesParserV2.Formats.Parsers
 			StreamHelper.ThrowIfStreamIsNotSeekableOrReadable(lrcStream);
 			lrcStream.Position = 0;
 
-			using StreamReader reader = new StreamReader(lrcStream, encoding, true, 1024, true);
+			using StreamReader reader = new StreamReader(lrcStream, encoding, true, 4096, true);
 			List<SubtitleModel> items = new List<SubtitleModel>();
 
 			string? lastLine = null;
@@ -130,7 +134,10 @@ namespace SubtitlesParserV2.Formats.Parsers
 		/// <param name="line">The line to check.</param>
 		private static bool IsValidLrcLine(string line)
 		{
-			return ShortTimestampRegex.IsMatch(line) || LongTimestampRegex.IsMatch(line);
+			return ShortTimestampCentisecondsRegex.IsMatch(line) || 
+			       ShortTimestampMillisecondsRegex.IsMatch(line) || 
+			       LongTimestampCentisecondsRegex.IsMatch(line) || 
+			       LongTimestampMillisecondsRegex.IsMatch(line);
 		}
 
 		/// <summary>
@@ -147,28 +154,64 @@ namespace SubtitlesParserV2.Formats.Parsers
 
 		/// <summary>
 		/// Parses the timestamp from a line and converts it to milliseconds.
+		/// Supports both centiseconds (2 digits: .XX) and milliseconds (3 digits: .XXX) formats.
 		/// Example:
-		/// [00:00.xx] My lyrics!
+		/// [00:00.50] My lyrics! (centiseconds)
+		/// [00:00.500] My lyrics! (milliseconds)
 		/// </summary>
 		/// <returns>The timestamp in milliseconds or -1 if it could not be parsed.</returns>
 		/// <param name="line">The line containing the timestamp.</param>
 		private static int ParseLrcTime(string line)
 		{
-			Match match = ShortTimestampRegex.Match(line);
-			if (!match.Success)
+			Match match;
+			bool isMilliseconds = false;
+
+			// Try short format with milliseconds first (3 digits)
+			match = ShortTimestampMillisecondsRegex.Match(line);
+			if (match.Success)
 			{
-				match = LongTimestampRegex.Match(line);
+				isMilliseconds = true;
+			}
+			else
+			{
+				// Try short format with centiseconds (2 digits)
+				match = ShortTimestampCentisecondsRegex.Match(line);
+				if (!match.Success)
+				{
+					// Try long format with milliseconds (3 digits)
+					match = LongTimestampMillisecondsRegex.Match(line);
+					if (match.Success)
+					{
+						isMilliseconds = true;
+					}
+					else
+					{
+						// Try long format with centiseconds (2 digits)
+						match = LongTimestampCentisecondsRegex.Match(line);
+					}
+				}
 			}
 
 			if (match.Success)
 			{
-				// Try to parse the timestamp
 				int hours = int.TryParse(match.Groups["H"]?.Value, out int h) ? h : 0;
 				int minutes = int.TryParse(match.Groups["M"]?.Value, out int m) ? m : 0;
 				int seconds = int.TryParse(match.Groups["S"]?.Value, out int s) ? s : 0;
-				int milliseconds = int.TryParse(match.Groups["X"]?.Value, out int x) ? x : 0;
+				
+				int milliseconds;
+				if (isMilliseconds)
+				{
+					// Parse milliseconds directly (3 digits)
+					milliseconds = int.TryParse(match.Groups["MS"]?.Value, out int ms) ? ms : 0;
+				}
+				else
+				{
+					// Parse centiseconds (2 digits) and convert to milliseconds
+					int centiseconds = int.TryParse(match.Groups["C"]?.Value, out int c) ? c : 0;
+					milliseconds = centiseconds * 10;
+				}
 
-				// Convert to total in milliseconds
+				// Convert to total milliseconds
 				return (int)new TimeSpan(0, hours, minutes, seconds, milliseconds).TotalMilliseconds;
 			}
 
